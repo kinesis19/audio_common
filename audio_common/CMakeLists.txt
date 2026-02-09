@@ -45,24 +45,6 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# music_node
-add_executable(music_node
-  src/audio_common/wave_file.cpp
-  src/audio_common/music_node.cpp
-  src/music_main.cpp
-)
-target_link_libraries(music_node
-  ament_index_cpp::ament_index_cpp
-  ${audio_common_msgs_TARGETS}
-  ${PORTAUDIO_LIB}
-  rclcpp::rclcpp
-  ${std_srvs_TARGETS}
-)
-
-install(TARGETS
-  music_node
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 install(DIRECTORY
   samples
