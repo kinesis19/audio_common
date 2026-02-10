@@ -31,33 +31,15 @@
 #include "audio_common/audio_player_node.hpp"
 #include "audio_common_msgs/msg/audio.hpp"
 #include "audio_common_msgs/msg/audio_stamped.hpp"
+#include "lifecycle_msgs/msg/state.hpp"
 
 using namespace audio_common;
 using std::placeholders::_1;
 
-AudioPlayerNode::AudioPlayerNode() : Node("audio_player_node") {
+AudioPlayerNode::AudioPlayerNode() : rclcpp_lifecycle::LifecycleNode("audio_player_node") {
   // Declare parameters
   this->declare_parameter<int>("channels", 2);
   this->declare_parameter<int>("device", -1);
-
-  // Get parameters
-  this->channels_ = this->get_parameter("channels").as_int();
-  this->device_ = this->get_parameter("device").as_int();
-
-  // Initialize PortAudio
-  PaError err = Pa_Initialize();
-  if (err != paNoError) {
-    RCLCPP_ERROR(this->get_logger(), "PortAudio error: %s",
-                 Pa_GetErrorText(err));
-    throw std::runtime_error("Failed to initialize PortAudio");
-  }
-
-  // Subscription to audio topic
-  auto qos_profile = rclcpp::SensorDataQoS();
-  this->audio_sub_ =
-      this->create_subscription<audio_common_msgs::msg::AudioStamped>(
-          "audio", qos_profile,
-          std::bind(&AudioPlayerNode::audio_callback, this, _1));
 
   RCLCPP_INFO(this->get_logger(), "AudioPlayer node started");
 }
@@ -71,8 +53,73 @@ AudioPlayerNode::~AudioPlayerNode() {
   Pa_Terminate();
 }
 
+AudioPlayerNode::LifecycleCallbackReturn AudioPlayerNode::on_configure(
+    const rclcpp_lifecycle::State &state) {
+  
+  // Get parameters
+  this->channels_ = this->get_parameter("channels").as_int();
+  this->device_ = this->get_parameter("device").as_int();
+
+  // Initialize PortAudio
+  PaError err = Pa_Initialize();
+  if (err != paNoError) {
+    RCLCPP_ERROR(this->get_logger(), "PortAudio error: %s",
+      Pa_GetErrorText(err));
+    throw std::runtime_error("Failed to initialize PortAudio");
+  }
+
+  // Subscription to audio topic
+  auto qos_profile = rclcpp::SensorDataQoS();
+  this->audio_sub_ =
+      this->create_subscription<audio_common_msgs::msg::AudioStamped>(
+          "audio", qos_profile,
+          std::bind(&AudioPlayerNode::audio_callback, this, _1));
+
+  RCLCPP_INFO(this->get_logger(), "Configuring AudioPlayerNode...");
+  return LifecycleCallbackReturn::SUCCESS;
+}
+
+AudioPlayerNode::LifecycleCallbackReturn AudioPlayerNode::on_activate(
+    const rclcpp_lifecycle::State &state) {
+  RCLCPP_INFO(this->get_logger(), "Activating AudioPlayerNode...");
+  return LifecycleCallbackReturn::SUCCESS;
+}
+
+AudioPlayerNode::LifecycleCallbackReturn AudioPlayerNode::on_deactivate(const rclcpp_lifecycle::State &) {
+  // 스트림들을 일시적으로 멈춤
+  for (auto &pair : stream_dict_) {
+    Pa_StopStream(pair.second);
+  }
+  RCLCPP_INFO(this->get_logger(), "Deactivated: Audio playback paused.");
+  return LifecycleCallbackReturn::SUCCESS;
+}
+
+AudioPlayerNode::LifecycleCallbackReturn AudioPlayerNode::on_cleanup(const rclcpp_lifecycle::State &) {
+  // 모든 스트림 닫기 및 리소스 해제
+  for (auto &pair : stream_dict_) {
+    Pa_CloseStream(pair.second);
+  }
+  stream_dict_.clear();
+  Pa_Terminate();
+  audio_sub_.reset();
+  
+  RCLCPP_INFO(this->get_logger(), "Cleanup: Resources released.");
+  return LifecycleCallbackReturn::SUCCESS;
+}
+
+AudioPlayerNode::LifecycleCallbackReturn AudioPlayerNode::on_shutdown(const rclcpp_lifecycle::State &) {
+  // 종료 전 정리 로직
+  return LifecycleCallbackReturn::SUCCESS;
+}
+
+
 void AudioPlayerNode::audio_callback(
     const audio_common_msgs::msg::AudioStamped::SharedPtr msg) {
+
+    if (this->get_current_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
+        RCLCPP_WARN(this->get_logger(), "Node is not active. Ignoring audio message.");
+        return;
+    }
 
   // Create a unique stream key based on format, rate, and channels
   std::string stream_key = std::to_string(msg->audio.info.format) + "_" +

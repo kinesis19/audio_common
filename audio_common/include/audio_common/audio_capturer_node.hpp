@@ -28,17 +28,37 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "audio_common_msgs/msg/audio_stamped.hpp"
+#include "rclcpp_lifecycle/lifecycle_node.hpp"
 
 namespace audio_common {
 
-class AudioCapturerNode : public rclcpp::Node {
+class AudioCapturerNode : public rclcpp_lifecycle::LifecycleNode {
 public:
   AudioCapturerNode();
   ~AudioCapturerNode() override;
 
+  // Lifecycle callback methods
+  using LifecycleCallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
+
+  LifecycleCallbackReturn on_configure(
+      const rclcpp_lifecycle::State &previous_state) override;
+  LifecycleCallbackReturn on_activate(
+      const rclcpp_lifecycle::State &previous_state) override;
+  LifecycleCallbackReturn on_deactivate(
+      const rclcpp_lifecycle::State &previous_state) override;
+  LifecycleCallbackReturn on_cleanup(
+      const rclcpp_lifecycle::State &previous_state) override;
+  LifecycleCallbackReturn on_shutdown(
+      const rclcpp_lifecycle::State &previous_state) override;
+  
+  // Lifecycle 사용 전의 work method
   void work();
 
 private:
+
+  // Timer Callback (work 대체용)
+  void capture_callback();
+  
   PaStream *stream_;
   int format_;
   int channels_;
@@ -46,7 +66,8 @@ private:
   int chunk_;
   std::string frame_id_;
 
-  rclcpp::Publisher<audio_common_msgs::msg::AudioStamped>::SharedPtr audio_pub_;
+  rclcpp_lifecycle::LifecyclePublisher<audio_common_msgs::msg::AudioStamped>::SharedPtr audio_pub_;
+  rclcpp::TimerBase::SharedPtr timer_;
 
   // Methods
   template <typename T> std::vector<T> read_data();

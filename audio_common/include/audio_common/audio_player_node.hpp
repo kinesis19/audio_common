@@ -28,18 +28,27 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include "audio_common_msgs/msg/audio_stamped.hpp"
+#include "rclcpp_lifecycle/lifecycle_node.hpp"
 
 namespace audio_common {
 
-class AudioPlayerNode : public rclcpp::Node {
+class AudioPlayerNode : public rclcpp_lifecycle::LifecycleNode {
 public:
   AudioPlayerNode();
   ~AudioPlayerNode() override;
 
 private:
   // ROS 2 subscription for audio messages
-  rclcpp::Subscription<audio_common_msgs::msg::AudioStamped>::SharedPtr
-      audio_sub_;
+  using LifecycleCallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
+
+  // Lifecycle callback methods
+  LifecycleCallbackReturn on_configure(const rclcpp_lifecycle::State &previous_state) override;
+  LifecycleCallbackReturn on_activate(const rclcpp_lifecycle::State &previous_state) override;
+  LifecycleCallbackReturn on_deactivate(const rclcpp_lifecycle::State &previous_state) override;
+  LifecycleCallbackReturn on_cleanup(const rclcpp_lifecycle::State &previous_state) override;
+  LifecycleCallbackReturn on_shutdown(const rclcpp_lifecycle::State &previous_state) override;
+
+  rclcpp::Subscription<audio_common_msgs::msg::AudioStamped>::SharedPtr audio_sub_;
 
   // PortAudio stream dictionary
   std::unordered_map<std::string, PaStream *> stream_dict_;
