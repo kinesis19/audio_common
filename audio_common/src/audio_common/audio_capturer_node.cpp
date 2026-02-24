@@ -48,8 +48,11 @@ AudioCapturerNode::LifecycleCallbackReturn AudioCapturerNode::on_configure(const
     RCLCPP_ERROR(this->get_logger(), "Failed to open audio stream: %s", Pa_GetErrorText(err));
     return AudioCapturerNode::LifecycleCallbackReturn::FAILURE;
   }
-
-  this->audio_pub_ = this->create_publisher<audio_common_msgs::msg::AudioStamped>("audio", rclcpp::SensorDataQoS());
+  // QoS Setting
+  auto qos = rclcpp::SensorDataQos();
+  qos.keep_last(1); // Network가 지연되어도 오디오 1개만 유지해서 딜레이 방지
+  qos.best_effort();
+  this->audio_pub_ = this->create_publisher<audio_common_msgs::msg::AudioStamped>("audio", qos);
 
   RCLCPP_INFO(this->get_logger(), "Configured: AudioCapturerNode");
   return AudioCapturerNode::LifecycleCallbackReturn::SUCCESS;
