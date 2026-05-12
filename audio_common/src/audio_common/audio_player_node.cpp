@@ -70,6 +70,9 @@ AudioPlayerNode::LifecycleCallbackReturn AudioPlayerNode::on_configure(
 
   // Subscription to audio topic
   auto qos_profile = rclcpp::SensorDataQoS();
+  qos_profile.keep_last(1);
+  qos_profile.effort();
+
   this->audio_sub_ =
       this->create_subscription<audio_common_msgs::msg::AudioStamped>(
           "audio", qos_profile,
