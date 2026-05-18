@@ -9,7 +9,6 @@ find_package(rclcpp_action REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(audio_common_msgs REQUIRED)
 find_library(PORTAUDIO_LIB portaudio REQUIRED)
-find_package(rclcpp_lifecycle REQUIRED)
 
 include_directories(
   include
@@ -25,7 +24,6 @@ target_link_libraries(audio_capturer_node
   ${audio_common_msgs_TARGETS}
   ${PORTAUDIO_LIB}
   rclcpp::rclcpp
-  rclcpp_lifecycle::rclcpp_lifecycle
 )
 install(TARGETS
   audio_capturer_node
@@ -41,9 +39,7 @@ target_link_libraries(audio_player_node
   ${audio_common_msgs_TARGETS}
   ${PORTAUDIO_LIB}
   rclcpp::rclcpp
-  rclcpp_lifecycle::rclcpp_lifecycle
 )
-
 install(TARGETS
   audio_player_node
   DESTINATION lib/${PROJECT_NAME}
@@ -80,19 +76,6 @@ set(SOURCES
 
 add_library(${LIB} STATIC ${SOURCES})
 target_link_libraries(${LIB} ${DEPENDENCIES})
-
-ament_target_dependencies(audio_capturer_node
-  rclcpp
-  rclcpp_lifecycle
-  audio_common_msgs
-)
-
-
-ament_target_dependencies(audio_player_node
-  rclcpp
-  rclcpp_lifecycle
-  audio_common_msgs
-)
 
 install(TARGETS ${LIB}
   ARCHIVE DESTINATION lib
